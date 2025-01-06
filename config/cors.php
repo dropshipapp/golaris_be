@@ -17,18 +17,23 @@ return [
 
     'paths' => ['api/*', 'sanctum/csrf-cookie'],
 
-    'allowed_methods' => ['*'],
+'allowed_methods' => ['*'], // Bisa menyesuaikan jika hanya ingin mengizinkan metode tertentu seperti ['GET', 'POST', 'PUT']
 
-    'allowed_origins' => ['*'],
+'allowed_origins' => [
+    'http://localhost', // Jika frontend Anda berjalan di localhost
+    'https://proyekiii.github.io', // URL frontend GitHub Pages Anda
+    'https://proyekiii.github.io/golaris_frontend', // Pastikan URL ini benar sesuai dengan lokasi frontend Anda
+],
 
-    'allowed_origins_patterns' => [],
+'allowed_origins_patterns' => [],
 
-    'allowed_headers' => ['*'],
+'allowed_headers' => ['*'], // Mengizinkan semua header
 
-    'exposed_headers' => [],
+'exposed_headers' => [],
 
-    'max_age' => 0,
+'max_age' => 0,
 
-    'supports_credentials' => false,
+'supports_credentials' => true, // Aktifkan jika perlu mengirimkan cookie atau token
+
 
 ];
