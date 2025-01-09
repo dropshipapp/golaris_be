@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Supplier;
-use App\Models\Payment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Midtrans\Snap;
@@ -17,7 +16,7 @@ class AuthController extends Controller
         // Konfigurasi Midtrans
         Config::$clientKey = 'SB-Mid-client-ZUBzF67nnKr1QVSp';
         Config::$serverKey = 'SB-Mid-server-E4EnoD_Dadsp8CCfO_Mm7frW';
-        Config::$isProduction = false; // Mode Sandbox
+        Config::$isProduction = false;
         Config::$isSanitized = true;
         Config::$is3ds = true;
     }
@@ -39,7 +38,6 @@ class AuthController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'password' => bcrypt($request->password),
-            'payment_status' => 'pending', // Status pembayaran awal adalah pending
         ]);
 
         // Generate payment request menggunakan Midtrans
@@ -57,19 +55,9 @@ class AuthController extends Controller
         try {
             // Generate Snap token
             $snapToken = Snap::getSnapToken($order);
-
-            // Simpan entri pembayaran
-            $payment = Payment::create([
-                'supplier_id' => $supplier->id,
-                'order_id' => 'order-' . time(),
-                'gross_amount' => 30000,
-                'payment_status' => 'pending', // Status pembayaran sementara
-            ]);
-
-            // Kembalikan Snap token ke front-end
             return response()->json(['snap_token' => $snapToken]);
         } catch (Exception $e) {
-            return response()->json(['error' => 'Error generating payment token: ' . $e->getMessage()], 500);
+            return response()->json(['error' => $e->getMessage()], 500);
         }
     }
 
@@ -87,7 +75,7 @@ class AuthController extends Controller
         // Cari supplier berdasarkan email
         $supplier = Supplier::where('email', $request->email)->first();
 
-        // Cek apakah supplier ditemukan dan password sesuai
+        // Cek apakah password sesuai
         if ($supplier && Hash::check($request->password, $supplier->password)) {
             return response()->json([
                 'message' => 'Login successful',
@@ -96,41 +84,5 @@ class AuthController extends Controller
         }
 
         return response()->json(['error' => 'Invalid credentials'], 401);
-    }
-
-    /**
-     * Handle Midtrans Payment Notification (Callback)
-     */
-    public function paymentNotification(Request $request)
-    {
-        $notification = $request->all();
-
-        // Verifikasi status transaksi
-        $transactionStatus = $notification['transaction_status']; // 'capture', 'settlement', 'pending', dll.
-        $orderId = $notification['order_id'];
-
-        // Cari entri pembayaran berdasarkan order_id
-        $payment = Payment::where('order_id', $orderId)->first();
-
-        if ($payment) {
-            // Update status pembayaran berdasarkan hasil callback
-            if ($transactionStatus == 'settlement') {
-                $payment->payment_status = 'paid';
-                $payment->save();
-                
-                // Update status supplier
-                $supplier = $payment->supplier;
-                $supplier->payment_status = 'paid';
-                $supplier->save();
-            } elseif ($transactionStatus == 'pending') {
-                $payment->payment_status = 'pending';
-                $payment->save();
-            } else {
-                $payment->payment_status = 'failed';
-                $payment->save();
-            }
-        }
-
-        return response()->json(['message' => 'Payment status updated successfully']);
     }
 }

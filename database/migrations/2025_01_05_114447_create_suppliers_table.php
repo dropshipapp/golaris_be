@@ -18,10 +18,11 @@ return new class extends Migration
         $table->string('name');
         $table->string('email')->unique();
         $table->string('password');
-        $table->string('payment_status')->default('pending'); // Status pembayaran
+        $table->enum('payment_status', ['pending', 'paid'])->default('pending');
         $table->timestamps();
     });
 }
+
 
 
     /**

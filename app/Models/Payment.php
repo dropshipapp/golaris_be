@@ -23,7 +23,8 @@ class Payment extends Model
      * Relasi ke model Supplier (Setiap pembayaran dimiliki oleh satu supplier).
      */
     public function supplier()
-    {
-        return $this->belongsTo(Supplier::class);
-    }
+{
+    return $this->belongsTo(Supplier::class);
+}
+
 }

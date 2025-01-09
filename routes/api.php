@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 
+
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('login', [AuthController::class, 'login']);
 
@@ -25,4 +26,7 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 
 // routes/api.php
 Route::post('payment-notification', [AuthController::class, 'paymentNotification']);
+
+Route::post('/midtrans/webhook', 'PaymentController@midtransWebhook');
+
 
