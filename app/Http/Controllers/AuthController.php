@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Http\Controllers;
+use App\Models\Admin;
 
 use App\Models\Supplier;
 use Illuminate\Http\Request;
@@ -85,4 +86,42 @@ class AuthController extends Controller
 
         return response()->json(['error' => 'Invalid credentials'], 401);
     }
+
+
+    public function registerAdmin(Request $request)
+{
+    $request->validate([
+        'name' => 'required|string|max:255',
+        'email' => 'required|email|unique:admins,email',
+        'password' => 'required|string|min:6|confirmed',
+    ]);
+
+    $admin = Admin::create([
+        'name' => $request->name,
+        'email' => $request->email,
+        'password' => bcrypt($request->password),
+    ]);
+
+    return response()->json(['message' => 'Admin registered successfully', 'admin' => $admin]);
+}
+
+public function loginAdmin(Request $request)
+{
+    $request->validate([
+        'email' => 'required|email',
+        'password' => 'required',
+    ]);
+
+    $admin = Admin::where('email', $request->email)->first();
+
+    if ($admin && Hash::check($request->password, $admin->password)) {
+        return response()->json([
+            'message' => 'Login successful',
+            'admin' => $admin
+        ]);
+    }
+
+    return response()->json(['error' => 'Invalid credentials'], 401);
+}
+
 }

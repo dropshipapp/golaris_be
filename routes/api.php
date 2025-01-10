@@ -7,6 +7,9 @@ use App\Http\Controllers\AuthController;
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('login', [AuthController::class, 'login']);
+Route::post('/admin/register', [AuthController::class, 'registerAdmin']);
+Route::post('/admin/login', [AuthController::class, 'loginAdmin']);
+
 
 
 /*
