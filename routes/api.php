@@ -3,12 +3,23 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\ProductController;
 
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('login', [AuthController::class, 'login']);
 Route::post('/admin/register', [AuthController::class, 'registerAdmin']);
 Route::post('/admin/login', [AuthController::class, 'loginAdmin']);
+
+Route::apiResource('categories', CategoryController::class);
+
+
+
+// API routes untuk Produk
+
+
+Route::apiResource('products', ProductController::class);
 
 
 

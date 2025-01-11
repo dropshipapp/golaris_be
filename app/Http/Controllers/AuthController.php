@@ -1,8 +1,8 @@
 <?php
 
 namespace App\Http\Controllers;
-use App\Models\Admin;
 
+use App\Models\Admin;
 use App\Models\Supplier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -63,7 +63,7 @@ class AuthController extends Controller
     }
 
     /**
-     * Handle Supplier Login
+     * Handle Login (Admin & Supplier)
      */
     public function login(Request $request)
     {
@@ -73,55 +73,49 @@ class AuthController extends Controller
             'password' => 'required',
         ]);
 
-        // Cari supplier berdasarkan email
-        $supplier = Supplier::where('email', $request->email)->first();
-
-        // Cek apakah password sesuai
-        if ($supplier && Hash::check($request->password, $supplier->password)) {
+        // Cari di tabel admin
+        $admin = Admin::where('email', $request->email)->first();
+        if ($admin && Hash::check($request->password, $admin->password)) {
             return response()->json([
                 'message' => 'Login successful',
-                'supplier' => $supplier
+                'type' => 'admin',
+                'user' => $admin,
             ]);
         }
 
+        // Cari di tabel supplier jika bukan admin
+        $supplier = Supplier::where('email', $request->email)->first();
+        if ($supplier && Hash::check($request->password, $supplier->password)) {
+            return response()->json([
+                'message' => 'Login successful',
+                'type' => 'supplier',
+                'user' => $supplier,
+            ]);
+        }
+
+        // Jika tidak ditemukan di kedua tabel
         return response()->json(['error' => 'Invalid credentials'], 401);
     }
 
-
+    /**
+     * Handle Admin Registration
+     */
     public function registerAdmin(Request $request)
-{
-    $request->validate([
-        'name' => 'required|string|max:255',
-        'email' => 'required|email|unique:admins,email',
-        'password' => 'required|string|min:6|confirmed',
-    ]);
-
-    $admin = Admin::create([
-        'name' => $request->name,
-        'email' => $request->email,
-        'password' => bcrypt($request->password),
-    ]);
-
-    return response()->json(['message' => 'Admin registered successfully', 'admin' => $admin]);
-}
-
-public function loginAdmin(Request $request)
-{
-    $request->validate([
-        'email' => 'required|email',
-        'password' => 'required',
-    ]);
-
-    $admin = Admin::where('email', $request->email)->first();
-
-    if ($admin && Hash::check($request->password, $admin->password)) {
-        return response()->json([
-            'message' => 'Login successful',
-            'admin' => $admin
+    {
+        // Validasi data input
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:admins,email',
+            'password' => 'required|string|min:6|confirmed',
         ]);
+
+        // Buat admin baru
+        $admin = Admin::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => bcrypt($request->password),
+        ]);
+
+        return response()->json(['message' => 'Admin registered successfully', 'admin' => $admin]);
     }
-
-    return response()->json(['error' => 'Invalid credentials'], 401);
-}
-
 }
