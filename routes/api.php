@@ -5,6 +5,14 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\PesananController;
+use App\Http\Controllers\PaymentPesananController;
+
+// File: routes/api.php
+
+
+
+
 
 
 Route::post('/register', [AuthController::class, 'register']);
@@ -21,6 +29,17 @@ Route::apiResource('categories', CategoryController::class);
 
 Route::apiResource('products', ProductController::class);
 
+
+
+
+// Route untuk Pesanan
+Route::resource('pesanan', PesananController::class);
+Route::post('/pesanan', [PesananController::class, 'createPesanan']);
+
+// Route untuk PaymentPesanan
+Route::resource('payment_pesanan', PaymentPesananController::class);
+// Webhook untuk Midtrans
+Route::post('/midtrans/webhook', [PaymentPesananController::class, 'midtransWebhook']);
 
 
 /*
@@ -41,6 +60,6 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 // routes/api.php
 Route::post('payment-notification', [AuthController::class, 'paymentNotification']);
 
-Route::post('/midtrans/webhook', 'PaymentController@midtransWebhook');
+
 
 
