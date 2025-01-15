@@ -118,4 +118,49 @@ class AuthController extends Controller
 
         return response()->json(['message' => 'Admin registered successfully', 'admin' => $admin]);
     }
+
+
+
+
+    /**
+ * Handle Midtrans Payment Notification
+ */
+public function paymentNotification(Request $request)
+{
+    $payload = $request->getContent();
+    $notification = json_decode($payload, true);
+
+    // Konfigurasi Midtrans
+    \Midtrans\Config::$serverKey = 'SB-Mid-server-E4EnoD_Dadsp8CCfO_Mm7frW';
+    \Midtrans\Config::$isProduction = false;
+
+    // Ambil informasi transaksi dari Midtrans
+    $transactionStatus = $notification['transaction_status'];
+    $orderId = $notification['order_id'];
+
+    // Cari data pembayaran berdasarkan order_id
+    $payment = \App\Models\Payment::where('order_id', $orderId)->first();
+
+    // Jika pembayaran tidak ditemukan
+    if (!$payment) {
+        return response()->json(['error' => 'Payment not found'], 404);
+    }
+
+    // Update status pembayaran berdasarkan status dari Midtrans
+    if ($transactionStatus === 'settlement') {
+        $payment->update(['payment_status' => 'paid']);
+    } elseif ($transactionStatus === 'pending') {
+        $payment->update(['payment_status' => 'pending']);
+    } elseif ($transactionStatus === 'expire') {
+        $payment->update(['payment_status' => 'expired']);
+    } elseif ($transactionStatus === 'cancel') {
+        $payment->update(['payment_status' => 'canceled']);
+    }
+
+    return response()->json(['message' => 'Payment status updated successfully']);
 }
+
+}
+
+
+

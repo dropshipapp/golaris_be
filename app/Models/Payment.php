@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -9,9 +8,9 @@ class Payment extends Model
 {
     use HasFactory;
 
-    /**
-     * Kolom yang bisa diisi (mass assignable).
-     */
+    // Tentukan nama tabel
+    protected $table = 'payments';
+
     protected $fillable = [
         'order_id',
         'supplier_id',
@@ -19,12 +18,8 @@ class Payment extends Model
         'payment_status',
     ];
 
-    /**
-     * Relasi ke model Supplier (Setiap pembayaran dimiliki oleh satu supplier).
-     */
     public function supplier()
-{
-    return $this->belongsTo(Supplier::class);
-}
-
+    {
+        return $this->belongsTo(Supplier::class);
+    }
 }

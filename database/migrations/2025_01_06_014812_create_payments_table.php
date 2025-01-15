@@ -9,16 +9,17 @@ use Illuminate\Support\Facades\Schema;
 class CreatePaymentsTable extends Migration
 {
     public function up()
-{
-    Schema::create('payments', function (Blueprint $table) {
-        $table->id();
-        $table->foreignId('supplier_id')->constrained()->onDelete('cascade');
-        $table->string('order_id')->unique();
-        $table->decimal('gross_amount', 15, 2);
-        $table->enum('payment_status', ['pending', 'paid', 'failed'])->default('pending');
-        $table->timestamps();
-    });
-}
+    {
+        Schema::create('payments', function (Blueprint $table) {
+            $table->id();
+            $table->string('order_id')->unique();
+            $table->foreignId('supplier_id')->constrained('suppliers')->onDelete('cascade');
+            $table->decimal('gross_amount', 15, 2);
+            $table->string('payment_status');
+            $table->timestamps();
+        });
+    }
+    
 
 
     public function down()
