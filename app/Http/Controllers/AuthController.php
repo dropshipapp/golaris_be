@@ -4,17 +4,19 @@ namespace App\Http\Controllers;
 
 use App\Models\Admin;
 use App\Models\Supplier;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Midtrans\Snap;
 use Midtrans\Config;
 use Exception;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Http\Request;
+use App\Models\Payment;
 
 class AuthController extends Controller
 {
     public function __construct()
     {
-        // Konfigurasi Midtrans
+        // Konfigurasi Midtrans secara langsung
         Config::$clientKey = 'SB-Mid-client-ZUBzF67nnKr1QVSp';
         Config::$serverKey = 'SB-Mid-server-E4EnoD_Dadsp8CCfO_Mm7frW';
         Config::$isProduction = false;
@@ -26,41 +28,57 @@ class AuthController extends Controller
      * Handle Supplier Registration and Payment
      */
     public function register(Request $request)
-    {
-        // Validasi data input
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:suppliers,email',
-            'password' => 'required|string|min:6|confirmed',
-        ]);
+{
+    // Validasi data input
+    $request->validate([
+        'name' => 'required|string|max:255',
+        'email' => 'required|email|unique:suppliers,email',
+        'password' => 'required|string|min:6|confirmed',
+    ]);
 
-        // Buat supplier baru
-        $supplier = Supplier::create([
-            'name' => $request->name,
+    // Buat supplier baru
+    $supplier = Supplier::create([
+        'name' => $request->name,
+        'email' => $request->email,
+        'password' => bcrypt($request->password),
+    ]);
+
+    // Generate payment request menggunakan Midtrans
+    $order = [
+        'transaction_details' => [
+            'order_id' => 'order-' . time(),
+            'gross_amount' => 30000, // Biaya registrasi
+        ],
+        'customer_details' => [
+            'first_name' => $request->name,
             'email' => $request->email,
-            'password' => bcrypt($request->password),
+        ],
+    ];
+
+    try {
+        $snapToken = Snap::getSnapToken($order);
+        Log::info('Snap Token Generated: ' . $snapToken);
+
+        // Menyimpan data pembayaran ke database
+        $payment = \App\Models\Payment::create([
+            'supplier_id' => $supplier->id,
+            'order_id' => $order['transaction_details']['order_id'],
+            'gross_amount' => $order['transaction_details']['gross_amount'],
+            'payment_status' => 'pending',
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
-        // Generate payment request menggunakan Midtrans
-        $order = [
-            'transaction_details' => [
-                'order_id' => 'order-' . time(),
-                'gross_amount' => 30000, // Biaya registrasi
-            ],
-            'customer_details' => [
-                'first_name' => $request->name,
-                'email' => $request->email,
-            ],
-        ];
-
-        try {
-            // Generate Snap token
-            $snapToken = Snap::getSnapToken($order);
-            return response()->json(['snap_token' => $snapToken]);
-        } catch (Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
-        }
+        return response()->json(['snap_token' => $snapToken, 'payment' => $payment]);
+    } catch (Exception $e) {
+        Log::error('Midtrans Error: ' . $e->getMessage());
+        return response()->json(['error' => $e->getMessage()], 500);
     }
+}
+
+    // Method lainnya (login, registerAdmin, dll.) tetap sama
+
+
 
     /**
      * Handle Login (Admin & Supplier)
@@ -119,48 +137,41 @@ class AuthController extends Controller
         return response()->json(['message' => 'Admin registered successfully', 'admin' => $admin]);
     }
 
-
-
-
     /**
- * Handle Midtrans Payment Notification
- */
-public function paymentNotification(Request $request)
-{
-    $payload = $request->getContent();
-    $notification = json_decode($payload, true);
+     * Handle Midtrans Payment Notification
+     */
+    public function paymentNotification(Request $request)
+    {
+        $payload = $request->getContent();
+        $notification = json_decode($payload, true);
 
-    // Konfigurasi Midtrans
-    \Midtrans\Config::$serverKey = 'SB-Mid-server-E4EnoD_Dadsp8CCfO_Mm7frW';
-    \Midtrans\Config::$isProduction = false;
+        // Konfigurasi Midtrans
+        \Midtrans\Config::$serverKey = env('MIDTRANS_SERVER_KEY');
+        \Midtrans\Config::$isProduction = env('MIDTRANS_IS_PRODUCTION', false);
 
-    // Ambil informasi transaksi dari Midtrans
-    $transactionStatus = $notification['transaction_status'];
-    $orderId = $notification['order_id'];
+        // Ambil informasi transaksi dari Midtrans
+        $transactionStatus = $notification['transaction_status'];
+        $orderId = $notification['order_id'];
 
-    // Cari data pembayaran berdasarkan order_id
-    $payment = \App\Models\Payment::where('order_id', $orderId)->first();
+        // Cari data pembayaran berdasarkan order_id
+        $payment = Payment::where('order_id', $orderId)->first();
 
-    // Jika pembayaran tidak ditemukan
-    if (!$payment) {
-        return response()->json(['error' => 'Payment not found'], 404);
+        // Jika pembayaran tidak ditemukan
+        if (!$payment) {
+            return response()->json(['error' => 'Payment not found'], 404);
+        }
+
+        // Update status pembayaran berdasarkan status dari Midtrans
+        if ($transactionStatus === 'settlement') {
+            $payment->update(['status' => 'paid']);
+        } elseif ($transactionStatus === 'pending') {
+            $payment->update(['status' => 'pending']);
+        } elseif ($transactionStatus === 'expire') {
+            $payment->update(['status' => 'expired']);
+        } elseif ($transactionStatus === 'cancel') {
+            $payment->update(['status' => 'canceled']);
+        }
+
+        return response()->json(['message' => 'Payment status updated successfully']);
     }
-
-    // Update status pembayaran berdasarkan status dari Midtrans
-    if ($transactionStatus === 'settlement') {
-        $payment->update(['payment_status' => 'paid']);
-    } elseif ($transactionStatus === 'pending') {
-        $payment->update(['payment_status' => 'pending']);
-    } elseif ($transactionStatus === 'expire') {
-        $payment->update(['payment_status' => 'expired']);
-    } elseif ($transactionStatus === 'cancel') {
-        $payment->update(['payment_status' => 'canceled']);
-    }
-
-    return response()->json(['message' => 'Payment status updated successfully']);
 }
-
-}
-
-
-
