@@ -36,6 +36,7 @@ Route::apiResource('products', ProductController::class);
 // Route untuk Pesanan
 Route::resource('pesanan', PesananController::class);
 Route::post('/pesanan', [PesananController::class, 'createPesanan']);
+Route::get('/pesanan', [PesananController::class, 'createPesanan']);
 
 // Route untuk PaymentPesanan
 Route::resource('payment_pesanan', PaymentPesananController::class);
