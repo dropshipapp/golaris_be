@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Http\Controllers;
+
 use Illuminate\Http\Request;
 use App\Models\Pesanan;
 use App\Models\Product;
@@ -19,6 +20,18 @@ class PesananController extends Controller
         Config::$isProduction = false;
         Config::$isSanitized = true;
         Config::$is3ds = true;
+    }
+
+    /**
+     * Menampilkan daftar pesanan
+     */
+    public function index()
+    {
+        // Ambil semua pesanan
+        $pesanans = Pesanan::all();
+
+        // Mengembalikan data pesanan dalam format JSON
+        return response()->json($pesanans);
     }
 
     /**
@@ -74,6 +87,15 @@ class PesananController extends Controller
         } catch (Exception $e) {
             return response()->json(['error' => $e->getMessage()], 500);
         }
+    }
+
+    /**
+     * Store method untuk menangani permintaan POST dari Route::resource
+     */
+    public function store(Request $request)
+    {
+        // Panggil fungsi createPesanan dari controller yang sama
+        return $this->createPesanan($request);
     }
 
     /**

@@ -57,10 +57,10 @@ class AuthController extends Controller
 
     try {
         $snapToken = Snap::getSnapToken($order);
-        Log::info('Snap Token Generated: ' . $snapToken);
-
+        Log::info('Snap Token Response: ', ['token' => $snapToken]);
+    
         // Menyimpan data pembayaran ke database
-        $payment = \App\Models\Payment::create([
+        $payment = Payment::create([
             'supplier_id' => $supplier->id,
             'order_id' => $order['transaction_details']['order_id'],
             'gross_amount' => $order['transaction_details']['gross_amount'],
@@ -68,12 +68,13 @@ class AuthController extends Controller
             'created_at' => now(),
             'updated_at' => now(),
         ]);
-
+    
         return response()->json(['snap_token' => $snapToken, 'payment' => $payment]);
     } catch (Exception $e) {
         Log::error('Midtrans Error: ' . $e->getMessage());
         return response()->json(['error' => $e->getMessage()], 500);
     }
+    
 }
 
     // Method lainnya (login, registerAdmin, dll.) tetap sama
