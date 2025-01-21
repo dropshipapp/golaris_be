@@ -78,10 +78,6 @@ class PesananController extends Controller
             // Generate Snap token untuk pembayaran
             $snapToken = Snap::getSnapToken($order);
 
-            // Menyimpan snap_token ke dalam pesanan
-            $pesanan->payment_url = $snapToken;
-            $pesanan->save();
-
             // Mengembalikan snap token untuk digunakan di frontend
             return response()->json(['snap_token' => $snapToken, 'pesanan' => $pesanan]);
         } catch (Exception $e) {
