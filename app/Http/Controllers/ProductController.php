@@ -6,18 +6,21 @@ use Illuminate\Http\Request;
 use App\Models\Product;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Log;
 
 class ProductController extends Controller
 {
     // Menambahkan produk baru
     public function store(Request $request)
     {
+        // Validasi input
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'description' => 'required|string',
             'price' => 'required|numeric',
             'stock' => 'required|numeric',
             'category_id' => 'required|exists:categories,id',
+            'supplier_id' => 'required|exists:suppliers,id',
             'image_url' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
@@ -25,12 +28,13 @@ class ProductController extends Controller
             return response()->json($validator->errors(), 400);
         }
 
-        // Jika ada gambar yang di-upload
+        // Cek jika ada gambar yang di-upload
         if ($request->hasFile('image_url')) {
-            $imagePath = $request->file('image_url')->store('products', 'public');
+            $image = $request->file('image_url');
+            $imagePath = $image->store('products', 'public');
             $image_url = asset('storage/' . $imagePath);
         } else {
-            $image_url = $request->image_url ?? 'path_to_image.jpg'; // Default gambar
+            $image_url = asset('images/default.jpg'); // Gambar default
         }
 
         // Simpan produk ke database
@@ -41,7 +45,12 @@ class ProductController extends Controller
             'stock' => $request->stock,
             'image_url' => $image_url,
             'category_id' => $request->category_id,
+            'supplier_id' => $request->supplier_id,
         ]);
+
+        // Tambahkan nama kategori dan hapus ID kategori
+        $product->category_name = $product->category ? $product->category->name : null;
+        unset($product->category_id);
 
         return response()->json($product, 201);
     }
@@ -49,18 +58,45 @@ class ProductController extends Controller
     // Menampilkan semua produk
     public function index()
     {
-        $products = Product::all();
-        return response()->json($products, 200);
+        $products = Product::with('category')->get();
+
+        // Tambahkan nama kategori dan hapus ID kategori dari setiap produk
+        return response()->json($products->map(function ($product) {
+            $product->category_name = $product->category ? $product->category->name : null;
+            unset($product->category_id);
+            return $product;
+        }), 200);
+    }
+
+    // Menampilkan produk berdasarkan supplier_id
+    public function getBySupplier($supplier_id)
+    {
+        $products = Product::with('category')->where('supplier_id', $supplier_id)->get();
+
+        if ($products->isEmpty()) {
+            return response()->json(['message' => 'No products found for this supplier'], 404);
+        }
+
+        // Tambahkan nama kategori dan hapus ID kategori dari setiap produk
+        return response()->json($products->map(function ($product) {
+            $product->category_name = $product->category ? $product->category->name : null;
+            unset($product->category_id);
+            return $product;
+        }), 200);
     }
 
     // Menampilkan detail produk berdasarkan ID
     public function show($id)
     {
-        $product = Product::find($id);
+        $product = Product::with('category')->find($id);
 
         if (!$product) {
             return response()->json(['message' => 'Product not found'], 404);
         }
+
+        // Tambahkan nama kategori dan hapus ID kategori
+        $product->category_name = $product->category ? $product->category->name : null;
+        unset($product->category_id);
 
         return response()->json($product, 200);
     }
@@ -80,6 +116,7 @@ class ProductController extends Controller
             'price' => 'nullable|numeric',
             'stock' => 'nullable|numeric',
             'category_id' => 'nullable|exists:categories,id',
+            'supplier_id' => 'nullable|exists:suppliers,id',
             'image_url' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
@@ -87,23 +124,34 @@ class ProductController extends Controller
             return response()->json($validator->errors(), 400);
         }
 
+        // Update gambar jika ada
         if ($request->hasFile('image_url')) {
             // Hapus gambar lama jika ada
             if ($product->image_url && Storage::disk('public')->exists(str_replace(asset('storage/'), '', $product->image_url))) {
                 Storage::disk('public')->delete(str_replace(asset('storage/'), '', $product->image_url));
             }
 
-            $imagePath = $request->file('image_url')->store('products', 'public');
+            $image = $request->file('image_url');
+            $imagePath = $image->store('products', 'public');
             $product->image_url = asset('storage/' . $imagePath);
         }
 
-        $product->update($request->only(['name', 'description', 'price', 'stock', 'category_id']));
+        // Update data produk
+        $product->update($request->only([
+            'name', 'description', 'price', 'stock', 'category_id', 'supplier_id'
+        ]));
+
+        Log::info('Updated Product: ', $product->toArray());
+
+        // Tambahkan nama kategori dan hapus ID kategori
+        $product->category_name = $product->category ? $product->category->name : null;
+        unset($product->category_id);
 
         return response()->json([
             'success' => true,
             'message' => 'Product updated successfully',
-            'data' => $product
-        ]);
+            'data' => $product,
+        ], 200);
     }
 
     // Menghapus produk

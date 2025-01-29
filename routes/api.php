@@ -29,6 +29,7 @@ Route::apiResource('categories', CategoryController::class);
 
 
 Route::apiResource('products', ProductController::class);
+Route::get('products/supplier/{supplier_id}', [ProductController::class, 'getBySupplier']);
 
 
 
