@@ -27,14 +27,19 @@ class Product extends Model
     }
 
     // Di dalam model Product
-public function getCategoryNameAttribute()
-{
-    return $this->category ? $this->category->name : null;
-}
+    public function getCategoryNameAttribute()
+    {
+        return $this->category ? $this->category->name : null;
+    }
 
 
-public function supplier()
+    public function supplier()
     {
         return $this->belongsTo(User::class, 'supplier_id');
+    }
+
+    public function pesanan()
+    {
+        return $this->hasMany(Pesanan::class);
     }
 }

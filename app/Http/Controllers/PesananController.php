@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use App\Models\Pesanan;
 use App\Models\Product;
 use App\Models\Supplier;
@@ -28,59 +29,140 @@ class PesananController extends Controller
     public function index()
     {
         // Ambil semua pesanan
-        $pesanans = Pesanan::all();
+        $pesanans = DB::table('pesanan')
+        ->join('products', 'pesanan.product_id', '=', 'products.id')
+        ->select(
+            'pesanan.id',
+            'products.name as product_name',
+            'pesanan.quantity',
+            'pesanan.price',
+            'pesanan.total_price',
+            'pesanan.status',
+            'pesanan.order_date'
+        )
+        ->get();
 
         // Mengembalikan data pesanan dalam format JSON
         return response()->json($pesanans);
     }
+
+    public function getOrders()
+    {
+        $orders = DB::table('pesanan')
+            ->join('products', 'pesanan.product_id', '=', 'products.id')
+            ->select(
+                'pesanan.id',
+                'products.name as product_name',
+                'pesanan.quantity',
+                'pesanan.price',
+                'pesanan.total_price',
+                'pesanan.status',
+                'pesanan.order_date'
+            )
+            ->get();
+
+        return response()->json($orders);
+    }
+
 
     /**
      * Handle Pesanan Creation and Payment
      */
     public function createPesanan(Request $request)
     {
-        // Validasi data input pesanan
-        $request->validate([
-            'supplier_id' => 'required|exists:suppliers,id',
-            'product_id' => 'required|exists:products,id',
-            'quantity' => 'required|integer|min:1',
-            'order_date' => 'required|date',
-        ]);
+    //     // Validasi data input pesanan
+    //     $request->validate([
+    //         'supplier_id' => 'required|exists:suppliers,id',
+    //         'product_id' => 'required|exists:products,id',
+    //         'quantity' => 'required|integer|min:1',
+    //         'order_date' => 'required|date',
+    //     ]);
 
-        // Mendapatkan data produk berdasarkan ID produk
-        $product = Product::find($request->product_id);
-        $totalPrice = $product->price * $request->quantity; // Menghitung total harga berdasarkan kuantitas
+    //     // Mendapatkan data produk berdasarkan ID produk
+    //     $product = Product::find($request->product_id);
+    //     $totalPrice = $product->price * $request->quantity; // Menghitung total harga berdasarkan kuantitas
 
-        // Membuat pesanan baru
-        $pesanan = Pesanan::create([
-            'supplier_id' => $request->supplier_id,
-            'product_id' => $request->product_id,
-            'quantity' => $request->quantity,
-            'price' => $product->price,
-            'total_price' => $totalPrice,
-            'order_date' => $request->order_date,
-            'status' => 'pending',
-        ]);
+    //     // Membuat pesanan baru
+    //     $pesanan = Pesanan::create([
+    //         'supplier_id' => $request->supplier_id,
+    //         'product_id' => $request->product_id,
+    //         'quantity' => $request->quantity,
+    //         'price' => $product->price,
+    //         'total_price' => $totalPrice,
+    //         'order_date' => $request->order_date,
+    //         'status' => 'pending',
+    //     ]);
 
-        // Generate payment request menggunakan Midtrans
-        $order = [
-            'transaction_details' => [
-                'order_id' => 'order-' . $pesanan->id,
-                'gross_amount' => $totalPrice, // Total harga pesanan
-            ],
-            'customer_details' => [
-                'first_name' => 'Nama Pelanggan', // Ganti dengan nama pelanggan
-                'email' => 'pelanggan@example.com', // Ganti dengan email pelanggan
-            ],
-        ];
+    //     // Generate payment request menggunakan Midtrans
+    //     $order = [
+    //         'transaction_details' => [
+    //             'order_id' => 'order-' . $pesanan->id,
+    //             'gross_amount' => $totalPrice, // Total harga pesanan
+    //         ],
+    //         'customer_details' => [
+    //             'first_name' => 'Nama Pelanggan', // Ganti dengan nama pelanggan
+    //             'email' => 'pelanggan@example.com', // Ganti dengan email pelanggan
+    //         ],
+    //     ];
+
+    //     try {
+    //         // Generate Snap token untuk pembayaran
+    //         $snapToken = Snap::getSnapToken($order);
+
+    //         // Mengembalikan snap token untuk digunakan di frontend
+    //         return response()->json(['snap_token' => $snapToken, 'pesanan' => $pesanan]);
+    //     } catch (Exception $e) {
+    //         return response()->json(['error' => $e->getMessage()], 500);
+    //     }
+    // }
 
         try {
+            // Validasi data input pesanan
+            $request->validate([
+                'supplier_id' => 'required|exists:suppliers,id',
+                'product_id' => 'required|exists:products,id',
+                'quantity' => 'required|integer|min:1',
+                'order_date' => 'required|date',
+            ]);
+
+            // Mendapatkan data produk berdasarkan ID produk
+            $product = Product::find($request->product_id);
+            if (!$product) {
+                return response()->json(['error' => 'Produk tidak ditemukan'], 404);
+            }
+
+            $totalPrice = $product->price * $request->quantity; // Menghitung total harga berdasarkan kuantitas
+
+            // Membuat pesanan baru
+            $pesanan = Pesanan::create([
+                'supplier_id' => $request->supplier_id,
+                'product_id' => $request->product_id,
+                'quantity' => $request->quantity,
+                'price' => $product->price,
+                'total_price' => $totalPrice,
+                'order_date' => $request->order_date,
+                'status' => 'pending',
+            ]);
+
+            // Generate payment request menggunakan Midtrans
+            $order = [
+                'transaction_details' => [
+                    'order_id' => 'order-' . $pesanan->id,
+                    'gross_amount' => $totalPrice, // Total harga pesanan
+                ],
+                'customer_details' => [
+                    'first_name' => 'Nama Pelanggan', // Ganti dengan nama pelanggan
+                    'email' => 'pelanggan@example.com', // Ganti dengan email pelanggan
+                ],
+            ];
+
             // Generate Snap token untuk pembayaran
             $snapToken = Snap::getSnapToken($order);
 
             // Mengembalikan snap token untuk digunakan di frontend
             return response()->json(['snap_token' => $snapToken, 'pesanan' => $pesanan]);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
+            // Tangani error dan kembalikan respons JSON
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
