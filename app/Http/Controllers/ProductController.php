@@ -62,7 +62,7 @@ class ProductController extends Controller
 
         // Tambahkan nama kategori dan hapus ID kategori dari setiap produk
         return response()->json($products->map(function ($product) {
-            $product->category_name = $product->category ? $product->category->name : null;
+            // $product->category_name = $product->category ? $product->category->name : null;
             unset($product->category_id);
             return $product;
         }), 200);
@@ -79,7 +79,7 @@ class ProductController extends Controller
 
         // Tambahkan nama kategori dan hapus ID kategori dari setiap produk
         return response()->json($products->map(function ($product) {
-            $product->category_name = $product->category ? $product->category->name : null;
+            // $product->category_name = $product->category ? $product->category->name : null;
             unset($product->category_id);
             return $product;
         }), 200);

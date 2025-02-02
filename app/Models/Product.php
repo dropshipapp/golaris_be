@@ -15,23 +15,21 @@ class Product extends Model
         'price',
         'stock',
         'image_url',
-        'category_id', // Tambahkan ini
-        'supplier_id', // Pastikan kolom ini bisa diisi
-
+        'category_id',
+        'supplier_id',
     ];
 
-    // Relasi ke kategori
+    protected $appends = ['category_name']; // Tambahkan ini
+
     public function category()
     {
         return $this->belongsTo(Category::class);
     }
 
-    // Di dalam model Product
     public function getCategoryNameAttribute()
     {
         return $this->category ? $this->category->name : null;
     }
-
 
     public function supplier()
     {
