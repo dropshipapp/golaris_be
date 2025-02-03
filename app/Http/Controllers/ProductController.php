@@ -70,20 +70,22 @@ class ProductController extends Controller
 
     // Menampilkan produk berdasarkan supplier_id
     public function getBySupplier($supplier_id)
-    {
-        $products = Product::with('category')->where('supplier_id', $supplier_id)->get();
+{
+    // Ambil produk berdasarkan supplier_id
+    $products = Product::with('category')->where('supplier_id', $supplier_id)->get();
 
-        if ($products->isEmpty()) {
-            return response()->json(['message' => 'No products found for this supplier'], 404);
-        }
-
-        // Tambahkan nama kategori dan hapus ID kategori dari setiap produk
-        return response()->json($products->map(function ($product) {
-            // $product->category_name = $product->category ? $product->category->name : null;
-            unset($product->category_id);
-            return $product;
-        }), 200);
+    // Cek jika produk tidak ditemukan
+    if ($products->isEmpty()) {
+        return response()->json(['message' => 'No products found for this supplier'], 404);
     }
+
+    // Kembalikan response produk dengan nama kategori dan tanpa kategori_id
+    return response()->json($products->map(function ($product) {
+        unset($product->category_id);
+        return $product;
+    }), 200);
+}
+
 
     // Menampilkan detail produk berdasarkan ID
     public function show($id)
