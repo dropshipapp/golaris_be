@@ -1,0 +1,42 @@
+name: AlwaysData.com Deployment
+on:
+  push:
+    branches:
+      - main
+jobs:
+  web-deploy:
+    name: 🎉 Deploy
+    runs-on: ubuntu-latest
+    steps:
+    - name: 🚚 Get latest code
+      uses: actions/checkout@v4
+
+    - name: 📂 Sync files
+      uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+      with:
+        server: $
+        username: $
+        password: $
+        exclude: |
+          **/.git*
+          **/.git*/**
+          **/*.go*
+          *.go
+          **/*.git*/**
+
+    - name: Check binary file, ipaddress, and restart sites
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: $
+        username: $
+        password: $
+        port: $
+        script: |
+          php -v
+          curl -sS https://getcomposer.org/installer | php
+          php composer.phar install --no-dev --optimize-autoloader
+          php artisan route:clear
+          php artisan config:clear
+          php artisan cache:clear
+          curl https://icanhazip.com/
+          curl -X POST --basic --user "$:" https://api.alwaysdata.com/v1/site/$/restart/
